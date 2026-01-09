@@ -9,35 +9,31 @@ const __dirname = path.dirname(__filename)
 
 const app = express()
 
-// ✅ utile dès qu'on fait des POST JSON
 app.use(express.json())
 
-// Simple root + health endpoints
-app.get('/', (_req, res) => res.json({ ok: true, message: 'Hello from CI/CD demo 👋' }))
+// API endpoints simples
 app.get('/health', (_req, res) => res.status(200).send('OK'))
+app.get('/api', (_req, res) =>
+  res.json({ ok: true, message: 'PassEvent API running 🚀' })
+)
 
-// Auto-mount all routers placed under src/routes/auto
+// Auto-mount des routes API
 const autoDir = path.join(__dirname, 'routes', 'auto')
 if (fs.existsSync(autoDir)) {
   const files = fs.readdirSync(autoDir).filter(f => f.endsWith('.route.js'))
 
   for (const f of files) {
     const full = path.join(autoDir, f)
-
-    // ✅ ESM-friendly import (marche aussi avec des modules CJS)
     const mod = await import(pathToFileURL(full).href)
     const router = mod.default ?? mod
 
-    if (typeof router !== 'function') {
-      console.warn(`[WARN] ${f} n'exporte pas un router Express. Reçu:`, typeof router)
-      continue
+    if (typeof router === 'function') {
+      app.use('/', router)
     }
-
-    app.use('/', router)
   }
 }
 
-// Global error middleware last
+// Middleware d'erreur en dernier
 app.use(errorHandler)
 
 export default app
